@@ -1,0 +1,6 @@
+beach
+cabin
+castle
+city
+sand_temple
+model_test
