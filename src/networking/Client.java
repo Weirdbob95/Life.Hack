@@ -4,7 +4,7 @@ import engine.Core;
 import engine.Destructible;
 import game.BallAttack;
 import game.Game;
-import game.InvisibleMan;
+import game.Player;
 import game.Particle;
 import graphics.Graphics2D;
 import graphics.Window3D;
@@ -136,9 +136,9 @@ public abstract class Client {
         });
 
         handleMessage(RESTART, data -> {
-            RegisteredEntity.getAll(BallAttack.class, InvisibleMan.class).forEach(Destructible::destroy);
+            RegisteredEntity.getAll(BallAttack.class, Player.class).forEach(Destructible::destroy);
             Particle.clear();
-            new InvisibleMan().create();
+            new Player().create();
         });
 
         handleMessage(MODEL_PLACE, data -> {

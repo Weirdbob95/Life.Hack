@@ -29,11 +29,11 @@ public class BallAttack extends RegisteredEntity {
         sprite.get().scale = new Vec2(.1);
 
         //Check for collisions with the player
-        Core.update.filter(dt -> isEnemy).forEach(dt -> RegisteredEntity.getAll(InvisibleMan.class).forEach(im -> {
+        Core.update.filter(dt -> isEnemy).forEach(dt -> RegisteredEntity.getAll(Player.class).forEach(im -> {
             if (im.get("invincible", Double.class).get() < 0) {
                 if (position.get().subtract(im.get("position", Vec3.class).get()).lengthSquared() < 2) {
                     im.destroy();
-                    new InvisibleMan().create();
+                    new Player().create();
                     Client.sendMessage(HIT, position.get(), thrower);
                 }
             }

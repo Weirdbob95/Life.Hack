@@ -133,7 +133,7 @@ public class Server {
                 sendToOthers(client, MAP_FILE, data);
             });
             handleMessage(client, RESTART, data -> {
-                RegisteredEntity.getAll(BallAttack.class, InvisibleMan.class).forEach(Destructible::destroy);
+                RegisteredEntity.getAll(BallAttack.class, Player.class).forEach(Destructible::destroy);
                 Particle.clear();
                 sendToAll(RESTART, data);
             });
@@ -231,7 +231,7 @@ public class Server {
         //The reset button
         Input.whenKey(Keyboard.KEY_BACKSLASH, true).onEvent(() -> {
             sendToAll(RESTART);
-            RegisteredEntity.getAll(BallAttack.class, InvisibleMan.class).forEach(Destructible::destroy);
+            RegisteredEntity.getAll(BallAttack.class, Player.class).forEach(Destructible::destroy);
             Particle.clear();
         });
 

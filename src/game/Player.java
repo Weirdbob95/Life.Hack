@@ -9,12 +9,12 @@ import graphics.loading.SpriteContainer;
 import map.CubeMap;
 import static map.CubeMap.WORLD_SIZE;
 import networking.Client;
-import static networking.MessageType.*;
+import static networking.MessageType.SNOWBALL;
 import org.lwjgl.input.Keyboard;
 import static util.Color4.BLACK;
 import util.*;
 
-public class InvisibleMan extends RegisteredEntity {
+public class Player extends RegisteredEntity {
 
     @Override
     protected void createInner() {
@@ -22,29 +22,16 @@ public class InvisibleMan extends RegisteredEntity {
         Signal<Vec3> position = Premade3D.makePosition(this);
         Signal<Vec3> prevPos = Premade3D.makePrevPosition(this);
         Signal<Vec3> velocity = Premade3D.makeVelocity(this);
-        Signal<Double> invincible = addChild(new Signal(5.), "invincible");
+        Mutable<Integer> ammoCount = new Mutable(3);
+        Mutable<Double> moveSpeed = new Mutable(5.);
 
         position.set(WORLD_SIZE.multiply(.5));
-
-        //Mutable ints
-        Mutable<Integer> ammoCount = new Mutable<Integer>(3);
-        Mutable<Double> moveSpeed = new Mutable<Double>(5.0);
 
         //Give the player basic first-person controls
         Premade3D.makeMouseLook(this, 2, -1.5, 1.5);
         Premade3D.makeWASDMovement(this, moveSpeed);
         Premade3D.makeGravity(this, new Vec3(0, 0, -15));
 
-        //Flying cheat
-//        Signal<Boolean> fly = Input.whenKey(KEY_TAB, true).reduce(false, b -> !b);
-//        add(fly,
-//                Input.whileKey(KEY_W, true).filter(fly).forEach(dt -> position.edit((fly.get() ? facing.toVec3() : forwards()).multiply(20 * dt)::add)),
-//                Input.whileKey(KEY_S, true).filter(fly).forEach(dt -> position.edit((fly.get() ? facing.toVec3() : forwards()).multiply(-20 * dt)::add)),
-//                Input.whileKey(KEY_A, true).filter(fly).forEach(dt -> position.edit(facing.toVec3().cross(UP).withLength(-20 * dt)::add)),
-//                Input.whileKey(KEY_D, true).filter(fly).forEach(dt -> position.edit(facing.toVec3().cross(UP).withLength(20 * dt)::add)),
-//                Input.whileKey(KEY_SPACE, true).filter(fly).forEach(dt -> position.edit(UP.multiply(20 * dt)::add)),
-//                Input.whileKey(KEY_LSHIFT, true).filter(fly).forEach(dt -> position.edit(UP.multiply(-20 * dt)::add)),
-//                Core.update.filter(fly).forEach(dt -> velocity.set(new Vec3(0))));
         //Make the camera automatically follow the player
         position.doForEach(v -> Window3D.pos = v.add(new Vec3(0, 0, .8)));
 
@@ -57,8 +44,10 @@ public class InvisibleMan extends RegisteredEntity {
             position.set(p.clamp(new Vec3(0), WORLD_SIZE.subtract(new Vec3(.0001))));
         });
 
-        //Make the player slowly lose invincibility
-        add(Core.update.forEach(dt -> invincible.edit(d -> d - dt)));
+        //Jumping
+        add(Input.whileKey(Keyboard.KEY_SPACE, true).filter(onGround).onEvent(() -> {
+            velocity.edit(v -> v.withZ(6));
+        }));
 
         //Gathering ammo
         add(Input.whenMouse(1, true).limit(.75).onEvent(() -> {
@@ -99,11 +88,6 @@ public class InvisibleMan extends RegisteredEntity {
                 ammoCount.o--;
             }
 
-        }));
-
-        //Jumping
-        add(Input.whileKey(Keyboard.KEY_SPACE, true).filter(onGround).onEvent(() -> {
-            velocity.edit(v -> v.withZ(6));
         }));
     }
 }

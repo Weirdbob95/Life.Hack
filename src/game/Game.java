@@ -59,7 +59,7 @@ public class Game {
         setupGUI();
 
         //Create the player
-        new InvisibleMan().create();
+        new Player().create();
     }
 
     public static void setupGraphics() {
@@ -132,7 +132,7 @@ public class Game {
             int[] coords = new int[3];
             boolean[] relative = {false, false, false};
             Vec3 pos;
-            Vec3 ppos = RegisteredEntity.get(InvisibleMan.class).get().get("position", Vec3.class).get();
+            Vec3 ppos = RegisteredEntity.get(Player.class).get().get("position", Vec3.class).get();
             for (int i = 0; i < 3; i++) {
                 if (al.get(i).startsWith(":")) {
                     relative[i] = true;
@@ -159,7 +159,7 @@ public class Game {
             if (!al.isEmpty()) {
                 return "\\pos does not accept any parameters.";
             }
-            Vec3 pos = RegisteredEntity.get(InvisibleMan.class).get().get("position", Vec3.class).get();
+            Vec3 pos = RegisteredEntity.get(Player.class).get().get("position", Vec3.class).get();
             return String.format("You are currently at: %f, %f, %f", pos.x, pos.y, pos.z);
         }));
         CommController.add(new Command("\\tp", al -> {
@@ -169,7 +169,7 @@ public class Game {
             boolean[] relative = {false, false, false};
             int[] coords = new int[3];
             Vec3 pos;
-            Vec3 ppos = RegisteredEntity.get(InvisibleMan.class).get().get("position", Vec3.class).get();
+            Vec3 ppos = RegisteredEntity.get(Player.class).get().get("position", Vec3.class).get();
             for (int i = 0; i < 3; i++) {
                 if (al.get(i).startsWith("~")) {
                     relative[i] = true;
@@ -182,7 +182,7 @@ public class Game {
                 }
             }
             pos = new Vec3(coords[0] + (relative[0] ? ppos.x : 0), coords[1] + (relative[1] ? ppos.y : 0), coords[2] + (relative[2] ? ppos.z : 0));
-            RegisteredEntity.get(InvisibleMan.class).get().get("position", Vec3.class).set(pos);
+            RegisteredEntity.get(Player.class).get().get("position", Vec3.class).set(pos);
             return String.format("Teleported to %f %f %f.", pos.x, pos.y, pos.z);
         }));
     }
