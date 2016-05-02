@@ -45,16 +45,10 @@ public abstract class Premade3D {
         return e.addChild(Core.update.collect(ZERO, (v, dt) -> position.edit(v.multiply(dt)::add)), "velocity");
     }
 
-    public static void makeWASDMovement(AbstractEntity e, Supplier<Double> maxSpeed) {
-        Signal<Boolean> blink = new Signal(false);
-        //Input.whenKey(KEY_B, true).onEvent(() -> blink.set(true));
-        //Input.whenKey(KEY_B, true).throttle(.1).onEvent(() -> blink.set(false));
-        Supplier<Double> speed = () -> maxSpeed.get() * (Input.keySignal(KEY_LSHIFT).get() ? .5 : 1) * (blink.get() ? 20 : 1);
+    public static void makeWASDMovement(AbstractEntity e, Supplier<Double> speed, Supplier<Double> friction) {
         Signal<Vec3> velocity = e.get("velocity", Vec3.class);
         e.onUpdate(dt -> {
-
             if (!isTyping()) {
-
                 Vec2 dir = new Vec2(0);
                 if (Input.keySignal(KEY_W).get()) {
                     dir = dir.add(new Vec2(1, 0));
@@ -68,53 +62,40 @@ public abstract class Premade3D {
                 if (Input.keySignal(KEY_D).get()) {
                     dir = dir.add(new Vec2(0, -1));
                 }
-                if (dir.equals(new Vec2(0))) {
-                    velocity.set(new Vec3(0, 0, velocity.get().z));
-                } else {
-                    if (dir.equals(new Vec2(1, 0))) {
-                        dir = dir.withLength(speed.get());
-                    } else {
-                        dir = dir.withLength(speed.get() * .75);
-                    }
-                    dir = dir.rotate(Window3D.facing.t);
-                    velocity.set(new Vec3(dir.x, dir.y, velocity.get().z));
-                }
+                Vec2 fdir = dir.rotate(Window3D.facing.t);
+                velocity.edit(v -> v.toVec2().interpolate(fdir.multiply(speed.get()), Math.pow(friction.get(), dt)).toVec3().withZ(v.z));
+//                if (dir.equals(new Vec2(0))) {
+//                    velocity.set(new Vec3(0, 0, velocity.get().z));
+//                } else {
+//                    if (dir.equals(new Vec2(1, 0))) {
+//                        dir = dir.withLength(speed.get());
+//                    } else {
+//                        dir = dir.withLength(speed.get() * .75);
+//                    }
+//                    dir = dir.rotate(Window3D.facing.t);
+//                    velocity.set(new Vec3(dir.x, dir.y, velocity.get().z));
+//                }
             }
         });
-//        e.onUpdate(dt -> velocity.set(ZERO.withZ(velocity.get().z)));
-//        //Supplier<Boolean> onlyW = () -> Input.keySignal(KEY_W).get() && !Input.keySignal(KEY_S).get() && !Input.keySignal(KEY_A).get() && !Input.keySignal(KEY_D).get();
-//
-//        e.add(Input.whileKey(KEY_W, true).filter(new Signal(Mouse.isGrabbed())).forEach(dt
-//                -> velocity.edit(Window3D.forwards().multiply(speed.get())::add)),
-//                Input.whileKey(KEY_S, true).filter(new Signal(Mouse.isGrabbed())).forEach(dt
-//                -> velocity.edit(Window3D.forwards().multiply(-speed.get())::add)),
-//                Input.whileKey(KEY_A, true).filter(new Signal(Mouse.isGrabbed())).forEach(dt
-//                -> velocity.edit(Window3D.UP.cross(Window3D.forwards()).multiply(speed.get())::add)),
-//                Input.whileKey(KEY_D, true).filter(new Signal(Mouse.isGrabbed())).forEach(dt
-//                -> velocity.edit(Window3D.UP.cross(Window3D.forwards()).multiply(-speed.get())::add)));
-//        e.onUpdate(dt -> {
-//            if (velocity.get().toVec2().lengthSquared() > speed.get() * speed.get()) {
-//                velocity.edit(v -> v.toVec2().withLength(speed.get()).toVec3().withZ(v.z));
-//            }
-//        });
     }
 
-    public static Signal<Vec3> makeCollisions(AbstractEntity e, Vec3 size) {
+    public static Signal<CollisionInfo> makeCollisions(AbstractEntity e, Vec3 size) {
         Signal<Vec3> position = e.get("position", Vec3.class);
         Signal<Vec3> prevPos = e.get("prevPos", Vec3.class);
         Signal<Vec3> velocity = e.get("velocity", Vec3.class);
-        Signal<Vec3> collision = new Signal(null);
+        Signal<CollisionInfo> collision = new Signal(null);
         e.onUpdate(dt -> {
             if (CubeMap.isSolid(position.get(), size)) {
-                Vec3 pos = position.get();
+                CollisionInfo c = new CollisionInfo(prevPos.get(), position.get());
                 int detail = 20;
-                Vec3 delta = position.get().subtract(prevPos.get()).divide(detail);
+                Vec3 delta = c.dir.divide(detail);
                 position.set(prevPos.get());
                 for (int i = 0; i < detail; i++) {
                     position.edit(delta.withY(0).withZ(0)::add);
                     if (CubeMap.isSolid(position.get(), size)) {
                         position.edit(delta.withY(0).withZ(0).reverse()::add);
                         velocity.edit(v -> v.withX(0));
+                        c.hitX = true;
                         break;
                     }
                 }
@@ -123,6 +104,7 @@ public abstract class Premade3D {
                     if (CubeMap.isSolid(position.get(), size)) {
                         position.edit(delta.withX(0).withZ(0).reverse()::add);
                         velocity.edit(v -> v.withY(0));
+                        c.hitY = true;
                         break;
                     }
                 }
@@ -131,10 +113,13 @@ public abstract class Premade3D {
                     if (CubeMap.isSolid(position.get(), size)) {
                         position.edit(delta.withY(0).withX(0).reverse()::add);
                         velocity.edit(v -> v.withZ(0));
+                        c.hitZ = true;
                         break;
                     }
                 }
-                collision.set(pos);
+                collision.set(c);
+            } else {
+                collision.set((CollisionInfo) null);
             }
         });
         return collision;

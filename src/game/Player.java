@@ -11,6 +11,7 @@ import static map.CubeMap.WORLD_SIZE;
 import networking.Client;
 import static networking.MessageType.SNOWBALL;
 import org.lwjgl.input.Keyboard;
+import static org.lwjgl.input.Keyboard.KEY_SPACE;
 import static util.Color4.BLACK;
 import util.*;
 
@@ -23,21 +24,21 @@ public class Player extends RegisteredEntity {
         Signal<Vec3> prevPos = Premade3D.makePrevPosition(this);
         Signal<Vec3> velocity = Premade3D.makeVelocity(this);
         Mutable<Integer> ammoCount = new Mutable(3);
-        Mutable<Double> moveSpeed = new Mutable(5.);
+        Mutable<Double> moveSpeed = new Mutable(8.);
 
         position.set(WORLD_SIZE.multiply(.5));
-
-        //Give the player basic first-person controls
-        Premade3D.makeMouseLook(this, 2, -1.5, 1.5);
-        Premade3D.makeWASDMovement(this, moveSpeed);
-        Premade3D.makeGravity(this, new Vec3(0, 0, -15));
 
         //Make the camera automatically follow the player
         position.doForEach(v -> Window3D.pos = v.add(new Vec3(0, 0, .8)));
 
         //Make the player collide with the floor
-        Premade3D.makeCollisions(this, new Vec3(.3, .3, .9));
+        Signal<CollisionInfo> collisions = Premade3D.makeCollisions(this, new Vec3(.3, .3, .9));
         Signal<Boolean> onGround = addChild(Core.update.map(() -> velocity.get().z <= 0 && CubeMap.isSolid(position.get().add(new Vec3(0, 0, -.01)), new Vec3(.3, .3, .9))));
+
+        //Give the player basic first-person controls
+        Premade3D.makeMouseLook(this, 2, -1.5, 1.5);
+        Premade3D.makeWASDMovement(this, moveSpeed, onGround.map(b -> b ? .0001 : .1));
+        Premade3D.makeGravity(this, new Vec3(0, 0, -15));
 
         //Force the player to stay inside the room
         position.filter(p -> !p.containedBy(new Vec3(0), WORLD_SIZE)).forEach(p -> {
@@ -46,7 +47,21 @@ public class Player extends RegisteredEntity {
 
         //Jumping
         add(Input.whileKey(Keyboard.KEY_SPACE, true).filter(onGround).onEvent(() -> {
-            velocity.edit(v -> v.withZ(6));
+            velocity.edit(v -> v.withZ(8));
+        }));
+
+        //Wall Jumping
+        add(Input.whenKey(KEY_SPACE, true).onEvent(() -> {
+            if (collisions.get() != null) {
+                if (collisions.get().hitX || collisions.get().hitY) {
+                    if (velocity.get().z > 0) {
+                        if (!onGround.get()) {
+                            velocity.edit(v -> v.add(collisions.get().normal().withLength(8)).withZ(8));
+                            //Window3D.facing = Window3D.facing.withT(velocity.get().direction());
+                        }
+                    }
+                }
+            }
         }));
 
         //Gathering ammo
@@ -87,7 +102,6 @@ public class Player extends RegisteredEntity {
                 b.get("velocity", Vec3.class).set(vel);
                 ammoCount.o--;
             }
-
         }));
     }
 }
