@@ -6,23 +6,36 @@ import engine.Signal;
 import graphics.Graphics2D;
 import graphics.Window3D;
 import graphics.loading.SpriteContainer;
+import static gui.TypingManager.isTyping;
 import map.CubeMap;
 import static map.CubeMap.WORLD_SIZE;
 import networking.Client;
 import static networking.MessageType.SNOWBALL;
 import org.lwjgl.input.Keyboard;
+import static org.lwjgl.input.Keyboard.KEY_A;
+import static org.lwjgl.input.Keyboard.KEY_D;
+import static org.lwjgl.input.Keyboard.KEY_S;
 import static org.lwjgl.input.Keyboard.KEY_SPACE;
-import static util.Color4.BLACK;
+import static org.lwjgl.input.Keyboard.KEY_W;
+import powers.DashPower;
+import powers.StabPower;
 import util.*;
+import static util.Color4.BLACK;
 
 public class Player extends RegisteredEntity {
 
+    public static Player player;
+
+    public Signal<Vec3> position, prevPos, velocity;
+    public Signal<Vec2> moveDir = new Signal(new Vec2(0));
+
     @Override
     protected void createInner() {
+        player = this;
         //Create the player's variables
-        Signal<Vec3> position = Premade3D.makePosition(this);
-        Signal<Vec3> prevPos = Premade3D.makePrevPosition(this);
-        Signal<Vec3> velocity = Premade3D.makeVelocity(this);
+        position = Premade3D.makePosition(this);
+        prevPos = Premade3D.makePrevPosition(this);
+        velocity = Premade3D.makeVelocity(this);
         Mutable<Integer> ammoCount = new Mutable(3);
         Mutable<Double> moveSpeed = new Mutable(8.);
 
@@ -36,9 +49,35 @@ public class Player extends RegisteredEntity {
         Signal<Boolean> onGround = addChild(Core.update.map(() -> velocity.get().z <= 0 && CubeMap.isSolid(position.get().add(new Vec3(0, 0, -.01)), new Vec3(.3, .3, .9))));
 
         //Give the player basic first-person controls
-        Premade3D.makeMouseLook(this, 2, -1.5, 1.5);
-        Premade3D.makeWASDMovement(this, moveSpeed, onGround.map(b -> b ? .0001 : .1));
+        Premade3D.makeMouseLook(this, 5, -1.5, 1.5);
         Premade3D.makeGravity(this, new Vec3(0, 0, -15));
+
+        onUpdate(dt -> {
+            if (!isTyping()) {
+                Vec2 dir = new Vec2(0);
+                if (Input.keySignal(KEY_W).get()) {
+                    dir = dir.add(new Vec2(1, 0));
+                }
+                if (Input.keySignal(KEY_S).get()) {
+                    dir = dir.add(new Vec2(-1, 0));
+                }
+                if (Input.keySignal(KEY_A).get()) {
+                    dir = dir.add(new Vec2(0, 1));
+                }
+                if (Input.keySignal(KEY_D).get()) {
+                    dir = dir.add(new Vec2(0, -1));
+                }
+                if (!dir.equals(new Vec2(0))) {
+                    moveDir.set(dir.rotate(Window3D.facing.t).normalize());
+                } else {
+                    moveDir.set(dir);
+                }
+                velocity.edit(v -> v.toVec2().interpolate(moveDir.get().multiply(moveSpeed.get()), Math.pow(onGround.get() ? .0001 : .1, dt)).toVec3().withZ(v.z));
+            }
+        });
+
+        new DashPower();
+        new StabPower();
 
         //Force the player to stay inside the room
         position.filter(p -> !p.containedBy(new Vec3(0), WORLD_SIZE)).forEach(p -> {

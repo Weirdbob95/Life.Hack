@@ -1,2 +1,2 @@
-fog color: 0 0 0
-ball color: 0 0 0
+fog color: 1 1 1
+ball color: 1 1 1
