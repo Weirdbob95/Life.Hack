@@ -1,9 +1,7 @@
 package powers;
 
-import engine.Core;
 import engine.EventStream;
 import engine.Input;
-import engine.Signal;
 import game.Player;
 import static org.lwjgl.input.Keyboard.KEY_LSHIFT;
 import util.Vec2;
@@ -20,7 +18,7 @@ public class DashPower extends TimedPower {
 
     @Override
     boolean canAct() {
-        return !Player.player.moveDir.get().equals(new Vec2(0)) && time.get() > .2;
+        return !Player.player.moveDir.get().equals(new Vec2(0)) && time.get() > .4 && !Player.player.wallSlide.get() && spendEnergy(30);
     }
 
     @Override

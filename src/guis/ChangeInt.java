@@ -43,7 +43,7 @@ public class ChangeInt extends ComponentInputGUI {
         inputs.add(new GUIButton("up", this, bPos.add(new Vec2(0, bDim.y * 2)), bDim, "Add", Color.white));
         inputs.add(new GUIButton("set", this, bPos.add(new Vec2(0, bDim.y * -1)), bDim, "Set", Color.orange));
 
-        components.add(new GUILabel("val", bPos.add(new Vec2(0, bDim.y)), bDim, "0", Color.white));
+        components.add(new GUILabel("val", bPos.add(new Vec2(0, bDim.y)), "0", Color.white));
         components.add(new GUIPanel("set panel", bPos.add(new Vec2(0, bDim.y * -1)), bDim, Color4.BLUE.multiply(1.)));
 
         for (int i = 0; i < 3; i++) {
@@ -56,7 +56,7 @@ public class ChangeInt extends ComponentInputGUI {
     public void recieve(String name, Object o) {
 
         System.out.println(name);
-        
+
         if (name.equals("down")) {
 
             val--;
@@ -73,7 +73,7 @@ public class ChangeInt extends ComponentInputGUI {
 
                 val = max;
             }
-        } else if (name.equals("back")){
+        } else if (name.equals("back")) {
 
             this.setVisible(false);
             from.changeInt(opName, val);

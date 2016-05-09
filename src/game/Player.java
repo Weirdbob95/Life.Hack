@@ -3,24 +3,24 @@ package game;
 import engine.Core;
 import engine.Input;
 import engine.Signal;
+import static game.Enemy.HITBOX_SIZE;
 import graphics.Graphics2D;
 import graphics.Window3D;
-import graphics.loading.SpriteContainer;
 import static gui.TypingManager.isTyping;
 import map.CubeMap;
 import static map.CubeMap.WORLD_SIZE;
-import networking.Client;
-import static networking.MessageType.SNOWBALL;
+import map.Raycast;
 import org.lwjgl.input.Keyboard;
-import static org.lwjgl.input.Keyboard.KEY_A;
-import static org.lwjgl.input.Keyboard.KEY_D;
-import static org.lwjgl.input.Keyboard.KEY_S;
-import static org.lwjgl.input.Keyboard.KEY_SPACE;
-import static org.lwjgl.input.Keyboard.KEY_W;
+import static org.lwjgl.input.Keyboard.*;
 import powers.DashPower;
+import powers.Power;
 import powers.StabPower;
-import util.*;
-import static util.Color4.BLACK;
+import powers.WallClimbPower;
+import static util.Color4.*;
+import util.Mutable;
+import util.RegisteredEntity;
+import util.Vec2;
+import util.Vec3;
 
 public class Player extends RegisteredEntity {
 
@@ -28,6 +28,7 @@ public class Player extends RegisteredEntity {
 
     public Signal<Vec3> position, prevPos, velocity;
     public Signal<Vec2> moveDir = new Signal(new Vec2(0));
+    public Signal<Boolean> onGround, wallSlide;
 
     @Override
     protected void createInner() {
@@ -36,7 +37,6 @@ public class Player extends RegisteredEntity {
         position = Premade3D.makePosition(this);
         prevPos = Premade3D.makePrevPosition(this);
         velocity = Premade3D.makeVelocity(this);
-        Mutable<Integer> ammoCount = new Mutable(3);
         Mutable<Double> moveSpeed = new Mutable(8.);
 
         position.set(WORLD_SIZE.multiply(.5));
@@ -46,7 +46,7 @@ public class Player extends RegisteredEntity {
 
         //Make the player collide with the floor
         Signal<CollisionInfo> collisions = Premade3D.makeCollisions(this, new Vec3(.3, .3, .9));
-        Signal<Boolean> onGround = addChild(Core.update.map(() -> velocity.get().z <= 0 && CubeMap.isSolid(position.get().add(new Vec3(0, 0, -.01)), new Vec3(.3, .3, .9))));
+        onGround = addChild(Core.update.map(() -> velocity.get().z <= 0 && CubeMap.isSolid(position.get().add(new Vec3(0, 0, -.01)), new Vec3(.3, .3, .9))));
 
         //Give the player basic first-person controls
         Premade3D.makeMouseLook(this, 5, -1.5, 1.5);
@@ -72,12 +72,9 @@ public class Player extends RegisteredEntity {
                 } else {
                     moveDir.set(dir);
                 }
-                velocity.edit(v -> v.toVec2().interpolate(moveDir.get().multiply(moveSpeed.get()), Math.pow(onGround.get() ? .0001 : .1, dt)).toVec3().withZ(v.z));
+                velocity.edit(v -> v.toVec2().interpolate(moveDir.get().multiply(moveSpeed.get()), Math.pow(onGround.get() ? .00001 : .1, dt)).toVec3().withZ(v.z));
             }
         });
-
-        new DashPower();
-        new StabPower();
 
         //Force the player to stay inside the room
         position.filter(p -> !p.containedBy(new Vec3(0), WORLD_SIZE)).forEach(p -> {
@@ -89,58 +86,59 @@ public class Player extends RegisteredEntity {
             velocity.edit(v -> v.withZ(8));
         }));
 
+        //Wall Slide
+        wallSlide = collisions.map(c -> {
+            if (c == null || onGround.get()) {
+                return false;
+            }
+            if (c.normal().toVec2().dot(moveDir.get()) < 0) {
+                return true;
+            }
+            return wallSlide.get();
+        });
+        add(wallSlide, Core.update.filter(wallSlide).forEach(dt -> {
+            velocity.edit(v -> v.add(collisions.get().normal().multiply(-.1)));
+            if (velocity.get().z < -2) {
+                velocity.edit(v -> v.withZ(-2));
+            }
+        }));
+
         //Wall Jumping
-        add(Input.whenKey(KEY_SPACE, true).onEvent(() -> {
-            if (collisions.get() != null) {
-                if (collisions.get().hitX || collisions.get().hitY) {
-                    if (velocity.get().z > 0) {
-                        if (!onGround.get()) {
-                            velocity.edit(v -> v.add(collisions.get().normal().withLength(8)).withZ(8));
-                            //Window3D.facing = Window3D.facing.withT(velocity.get().direction());
-                        }
-                    }
-                }
+        add(Input.whenKey(KEY_SPACE, true).filter(wallSlide).onEvent(() -> {
+            velocity.edit(v -> v.add(collisions.get().normal().withLength(12)).withZ(8));
+            //Window3D.facing = Window3D.facing.withT(velocity.get().direction());
+        }));
+
+        //Powers
+        new DashPower();
+        new WallClimbPower();
+        new StabPower();
+
+        //Create and destroy enemies
+        add(Input.whenKey(KEY_1, true).onEvent(() -> {
+            Raycast r = new Raycast(Window3D.pos, Window3D.pos.add(Window3D.facing.toVec3().multiply(20)));
+            if (r.hitEnemy != null) {
+                r.hitEnemy.destroy();
+            } else if (r.hitWall) {
+                Enemy e = new Enemy();
+                e.create();
+                e.get("position", Vec3.class).set(r.hitPos.add(r.normal.multiply(HITBOX_SIZE + .01)));
             }
         }));
 
-        //Gathering ammo
-        add(Input.whenMouse(1, true).limit(.75).onEvent(() -> {
-            if (ammoCount.o <= 2) {
-                moveSpeed.o = moveSpeed.o * .5;
-                Core.timer(.75, () -> {
-                    ammoCount.o++;
-                    moveSpeed.o = moveSpeed.o / .5;
-                });
-            }
-        }));
-
-        //Draw ammo
+        //Draw GUI
         Core.renderLayer(100).onEvent(() -> {
             Window3D.guiProjection();
 
-            Graphics2D.fillRect(new Vec2(800, 50), new Vec2(300, 100), Color4.gray(.5));
-            Graphics2D.drawRect(new Vec2(800, 50), new Vec2(300, 100), BLACK);
-            for (int i = 0; i < ammoCount.o; i++) {
-                Graphics2D.drawSprite(SpriteContainer.loadSprite("ball"), new Vec2(850 + 100 * i, 100), new Vec2(2), 0, BallAttack.BALL_COLOR);
-            }
+            Graphics2D.drawEllipse(new Vec2(600, 400), new Vec2(10), RED, 20);
+
+            Graphics2D.fillRect(new Vec2(900, 100), new Vec2(200, 50), gray(.8));
+            Graphics2D.drawRect(new Vec2(900, 100), new Vec2(200, 50), BLACK);
+            Graphics2D.fillRect(new Vec2(910, 110), new Vec2(180, 30), BLACK);
+            Graphics2D.fillRect(new Vec2(910, 110), new Vec2(180 * Power.energy / 100, 30), ORANGE);
+            Graphics2D.drawRect(new Vec2(910, 110), new Vec2(180, 30), BLACK);
 
             Window3D.resetProjection();
         });
-
-        //Throwing snowballs
-        add(Input.whenMouse(0, true).limit(.5).onEvent(() -> {
-            if (ammoCount.o > 0) {
-                Vec3 pos = position.get().add(new Vec3(0, 0, .8));
-                Vec3 vel = Window3D.facing.toVec3().withLength(30);
-
-                Client.sendMessage(SNOWBALL, pos, vel, -1);
-
-                BallAttack b = new BallAttack();
-                b.create();
-                b.get("position", Vec3.class).set(pos);
-                b.get("velocity", Vec3.class).set(vel);
-                ammoCount.o--;
-            }
-        }));
     }
 }

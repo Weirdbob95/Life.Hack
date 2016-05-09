@@ -3,7 +3,7 @@ package powers;
 import engine.Core;
 import engine.EventStream;
 
-abstract class TimedPower extends Power {
+public abstract class TimedPower extends Power {
 
     abstract double duration();
 
