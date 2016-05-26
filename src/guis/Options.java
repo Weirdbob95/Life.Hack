@@ -87,12 +87,12 @@ public class Options extends ComponentInputGUI {
     private void decide(String name) {
 
         Object vl = settings.get(next);
-        
-        if(vl instanceof Boolean){
-            
+
+        if (vl instanceof Boolean) {
+
             settings.replace(name, !((Boolean) vl));
-        }else if(vl instanceof Integer){
-            
+        } else if (vl instanceof Integer) {
+
             int[] mm = smm.get(name);
             newInt(name, (Integer) vl, mm[1], mm[0]);
         }
@@ -121,12 +121,12 @@ public class Options extends ComponentInputGUI {
     public void recieve(String name, Object o) {
 
         System.out.println(name);
-        
+
         if (name.length() == 1) {
 
             GUIButton gb = getButton((String) (new ArrayList(settings.keySet())).get(Integer.parseInt(name) * index));
             System.out.println(gb);
-            
+
             if (gb != null) {
 
                 String oName = gb.getLabel();
@@ -195,7 +195,7 @@ public class Options extends ComponentInputGUI {
 
                 read(reader.nextLine());
             }
-            
+
             reader.close();
         } catch (FileNotFoundException ex) {
 
@@ -205,8 +205,6 @@ public class Options extends ComponentInputGUI {
 
     private void read(String ln) {
 
-        System.out.println("");
-        
         int ind = ln.indexOf(" ");
         String name = ln.substring(0, ind++);
 
@@ -244,32 +242,32 @@ public class Options extends ComponentInputGUI {
 
     @Override
     public List<GUIComponent> mousePressed(Vec2 p) {
-        
+
         List<GUIComponent> logc = super.mousePressed(p);
-        
-        if(prev.containsClick(p)){
-            
+
+        if (prev.containsClick(p)) {
+
             logc.add(prev);
         }
-        
-        if(next.containsClick(p)){
-            
+
+        if (next.containsClick(p)) {
+
             logc.add(next);
         }
-        
-        if(back.containsClick(p)){
-            
+
+        if (back.containsClick(p)) {
+
             logc.add(back);
         }
-        
+
         return logc;
     }
-    
+
     @Override
-    public void draw(){
-        
+    public void draw() {
+
         super.draw();
-        
+
         next.draw();
         prev.draw();
         back.draw();

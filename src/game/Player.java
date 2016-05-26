@@ -76,11 +76,6 @@ public class Player extends RegisteredEntity {
             }
         });
 
-        //Force the player to stay inside the room
-        position.filter(p -> !p.containedBy(new Vec3(0), WORLD_SIZE)).forEach(p -> {
-            position.set(p.clamp(new Vec3(0), WORLD_SIZE.subtract(new Vec3(.0001))));
-        });
-
         //Jumping
         add(Input.whileKey(Keyboard.KEY_SPACE, true).filter(onGround).onEvent(() -> {
             velocity.edit(v -> v.withZ(8));

@@ -5,19 +5,18 @@ import engine.Input;
 import game.Player;
 import static org.lwjgl.input.Keyboard.KEY_LSHIFT;
 import util.Vec2;
-import util.Vec3;
 
 public class WallClimbPower extends Power {
 
     public WallClimbPower() {
-        whileActive.forEach(dt -> Player.player.velocity.edit(v -> v.withZ(8)));
+        whileActive.forEach(dt -> Player.player.velocity.edit(v -> v.withZ(Math.min(v.z + 25 * dt, 8))));
         whileActive.filter(Player.player.wallSlide.map(b -> !b)).forEach(dt -> finish());
         whileActive.forEach(dt -> {
             if (!spendEnergy(dt * 50)) {
                 finish();
             }
         });
-        onFinish.onEvent(() -> Player.player.velocity.set(new Vec3(0, 0, 5)));
+        onFinish.onEvent(() -> Player.player.velocity.edit(v -> v.withZ(Math.min(v.z, 4))));
     }
 
     @Override
